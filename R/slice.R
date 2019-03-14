@@ -1883,7 +1883,7 @@ getLM.clustering <- function(es, model.type="tree", cluster.method="kmeans",
 
   reducedDims <- (pData(es)[, dim.cols.idx])
 
-  if (is.null(k)) {
+  if (is.null(k) & cluster.method%in%c("pam","kmeans")) {
     if (cluster.method=="pam") {
       gskmn <- cluster::clusGap(as.matrix(reducedDims), FUN = cluster::pam,  K.max = k.max, B = B)
     } else if (cluster.method=="kmeans") {
@@ -1907,6 +1907,8 @@ getLM.clustering <- function(es, model.type="tree", cluster.method="kmeans",
   } else if (cluster.method=="kmeans") {
     db <- stats::kmeans(as.matrix(reducedDims), k)
     pData(es)$slice.state <- paste("C",as.numeric(db$cluster),sep="")
+  } else {
+	pData(es)$slice.state <- pData(es)[,cluster.method]
   }
 
   # }
@@ -1927,14 +1929,12 @@ getLM.clustering <- function(es, model.type="tree", cluster.method="kmeans",
     print(g)
   }
 
-
   # detect core cells and stable states
 
   cells.df <- pData(es)[, c("x","y", dim.cols, "entropy","slice.state")]
   cells.df$slice.realcell <- 1
   cells.df$slice.stablestate <- "NA"
   cells.df$entropy <- cells.df$entropy/max(cells.df$entropy)
-
 
   states <- sort(unique(as.character(cells.df$slice.state)))
   for (state in states) {
@@ -1962,7 +1962,6 @@ getLM.clustering <- function(es, model.type="tree", cluster.method="kmeans",
     cells.df <- rbind(cells.df, s.ss.df)
 
   }
-
   if (do.plot) {
     g <- ggplot() + ggtitle("Cell clusters and stable states") + labs(x="PC1", y="PC2")
     g <- g + geom_point(data=subset(cells.df, slice.realcell==1), aes(x=x, y=y, col=slice.state, size=entropy))
@@ -1982,7 +1981,6 @@ getLM.clustering <- function(es, model.type="tree", cluster.method="kmeans",
   } else { # by default, get mst
     stateGraph <- getStateGraph(as.matrix(t(ss.cells.df[, dim.cols])), type="mst")
   }
-
 
   if (do.plot) {
     utils::write.table(cbind(CELL=rownames(cells.df), cells.df), file=paste(context_str, "lineage-c.step3-cell_clusters.txt", sep=""), sep="\t", col.names=T, row.names=F)
@@ -2011,7 +2009,6 @@ getLM.clustering <- function(es, model.type="tree", cluster.method="kmeans",
   if (length(todelete)>0) {
     lineageModel <- igraph::delete.edges(lineageModel, todelete)
   }
-
 
   if (do.plot) {
     g <- ggplot() + ggtitle("Inferred Lineage Model") + labs(x="PC1", y="PC2")
